@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # 1. Web Server (Nginx)
+  web:
+    image: nginx:stable-alpine
+    container_name: web-server
+    restart: always
+    ports:
+      # Sử dụng cổng 8080 để tránh xung đột với WampServer/Apache
+      - "8080:80" 
+    volumes:
+      # Mount FILE cấu hình Nginx (Đã sửa lỗi mount)
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Mount thư mục mã nguồn Laravel
+      - ./src:/var/www/html
+    depends_on:
+      - app
+
+  # 2. Ứng dụng (PHP-FPM)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel-app
+    volumes:
+      - ./src:/var/www/html:delegated
+      - vendor_volume:/var/www/html/vendor
+    environment:
+      # Cấu hình kết nối Laravel/PHP đến MySQL
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_DATABASE=laravel
+      - DB_USERNAME=user
+      - DB_PASSWORD=secret
+    depends_on:
+      - db
+
+  # 3. Database (MySQL)
+  db:
+    image: mysql:8.0
+    container_name: mysql-db
+    restart: always
+    environment:
+      - MYSQL_DATABASE=laravel
+      - MYSQL_ROOT_PASSWORD=secret
+      - MYSQL_PASSWORD=secret
+      - MYSQL_USER=user
+    volumes:
+      - dbdata:/var/lib/mysql
+
+volumes:
+  dbdata:
+  vendor_volume:
